@@ -1,0 +1,7 @@
+configuration:
+  ha_token:
+    name: Home Assistant access token
+    description: Optional fallback token. Normally leave blank when using the Supervisor connection.
+  ha_base_url:
+    name: Home Assistant URL
+    description: Optional fallback Core API URL. Normally leave blank.

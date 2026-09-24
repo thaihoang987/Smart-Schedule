@@ -1,0 +1,1137 @@
+:root {
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-2: #f2f2f7;
+  --surface-elevated: #ffffff;
+  --text: #1c1c1e;
+  --text-muted: #8e8e93;
+  --border: #e5e5ea;
+  --accent: #0a84ff;
+  --accent-on: #ffffff;
+  --success: #34c759;
+  --danger: #ff3b30;
+  --warning: #ff9f0a;
+  --star: #ffb400;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tabbar-height: 56px;
+}
+
+/* Ingress is already inside the host's safe area. Do not reserve it twice.
+   Standalone Safari still uses env(safe-area-inset-bottom) above. */
+:root[data-embedded="true"] { --safe-bottom: 0px; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --surface-elevated: #323234;
+    --text: #f2f2f7;
+    --text-muted: #98989d;
+    --border: #38383a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-elevated: #323234;
+  --text: #f2f2f7;
+  --text-muted: #98989d;
+  --border: #38383a;
+}
+
+* { box-sizing: border-box; }
+
+/* Khoang den o day man hinh (phan hoi 2026-09-23, sau khi da bo double
+   safe-area o v0.5.16): `height:100%` tren html/body/#root can chuoi ancestor
+   resolve dung chieu cao THAT cua viewport - trong WKWebView cua app HA that
+   (Ingress nhung trong iframe long trong webview cua chinh app), chieu cao
+   "100%"/vh co the khong khop chieu cao HIEN THI thuc te (kieu bug 100vh
+   kinh dien tren mobile, cang de gap hon khi nhung trong app native), de lo
+   1 khoang trong ben duoi .app ma body tu lo mau nen (--bg) ra, nhin nhu 1
+   khoi den rieng khong lien quan gi toi tabbar. `100dvh` (dynamic viewport
+   height) bam theo vung hien thi THAT tai moi thoi diem, khong phu thuoc vao
+   viewport tinh cua trinh duyet cha - khai THEM sau 100% (trinh duyet khong
+   ho tro dvh se bo qua, van dung 100% nhu cu, khong mat gi). */
+/* Phan hoi 2026-09-23 "vẫn bị reload khi chạm vùng đó kéo xuống" - ban truoc
+   (`contain` chi tren body) chua du: pull-to-refresh cua nhieu trinh
+   duyet/WebView mobile (dac biet iOS Safari/WKWebView) doc theo gia tri tren
+   CA `html` LAN `body`, va `contain` van cho phep hanh vi overscroll MAC
+   DINH cua CHINH phan tu do dien ra (chi chan LAN TRUYEN len cha) - can
+   `none` (chan hoan toan, khong chi "khong lan truyen") tren CA html va
+   body de chan chac chan. */
+html { overscroll-behavior-y: none; }
+html, body, #root { width: 100%; height: 100%; height: 100dvh; min-height: 100%; min-height: 100dvh; }
+
+body {
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.app-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh; color: var(--text-muted); font-size: 16px;
+}
+
+.app-header {
+  padding: 14px 20px 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.app-header__version {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-x: none;
+  /* Phan hoi 2026-09-23 "vẫn bị reload khi chạm vùng đó kéo xuống" - day moi
+     la vung CUON THAT (body o tren da overflow:hidden), pull-to-refresh cua
+     trinh duyet thuong bat theo vung cuon dang o scrollTop=0 nay, khong phai
+     body. Doi tu `contain` sang `none` (contain van cho container tu lam
+     hieu ung overscroll rieng, mot so WebView mobile van coi do la tin hieu
+     de kich hoat refresh o tren; none chan han hoan toan) - danh doi mat
+     hieu ung bounce/rubber-band khi keo qua dau/cuoi danh sach, doi lay het
+     bi reload nham. */
+  overscroll-behavior-y: none;
+  /* Tabbar gio nam trong flow (khong che noi dung nua) - padding nay chi
+     con can de cuon het danh sach tren trang Nha khong bi nut "+" (.fab,
+     van position:fixed rieng) de len the cuoi cung. */
+  padding-bottom: calc(56px + var(--safe-bottom) + 20px);
+}
+
+/* Keep the bar inside the Ingress frame; only the main content scrolls. */
+.app-tabbar {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: calc(var(--tabbar-height) + var(--safe-bottom));
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) var(--safe-bottom)
+    max(16px, env(safe-area-inset-left, 0px));
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  position: relative;
+  z-index: 45;
+}
+
+@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
+  .app-tabbar {
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+
+/* Phan hoi 2026-09-23: vung an toan cu chi Home o duoi cung (34px tren
+   iPhone Face ID) nam NGOAI khung Ingress cua add-on - do chinh app HA
+   Companion tu ve, add-on khong ve len duoc (da xac nhan qua so lieu
+   window.innerHeight/screen.height that tren may that). Doan dau doan mau
+   vung do la den thuan (--bg, #000000) nhung nguoi dung phan hoi "cam giac
+   no mau xam xam" - do PIXEL THAT tu anh chup man hinh nguoi dung gui (kiem
+   tra bang PIL) xac nhan dung: vung do la #111111 (17,17,17), KHONG PHAI
+   den thuan - trung voi mau nen mac dinh cua theme toi Home Assistant
+   (--primary-background-color #111111 cua chinh frontend HA), khong phai
+   mau cua add-on. Doi tabbar sang dung --ha-app-bg (#111111 dark /#fafafa
+   light - mau nen mac dinh 2 theme cua HA, chua do PIL rieng ban sang) CHI
+   khi dang nhung trong Ingress, de khop dung mau thay vi doan --bg cua
+   chinh add-on. Mo doc lap ngoai trinh duyet (khong bi ve chan nao) van giu
+   --surface nhu cu cho dep. */
+:root {
+  --ha-app-bg: #fafafa;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ha-app-bg: #111111;
+  }
+}
+:root[data-theme="dark"] {
+  --ha-app-bg: #111111;
+}
+:root[data-embedded="true"] .app-tabbar {
+  background: var(--ha-app-bg);
+}
+@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
+  :root[data-embedded="true"] .app-tabbar {
+    background: color-mix(in srgb, var(--ha-app-bg) 90%, transparent);
+  }
+}
+
+.tab {
+  flex: 1 1 0;
+  max-width: 220px;
+  min-width: 0;
+  min-height: var(--tabbar-height);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px 5px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: color 150ms ease, opacity 150ms ease;
+}
+.tab svg { display: block; flex-shrink: 0; }
+.tab--active { color: var(--accent); font-weight: 600; }
+.tab:active { opacity: 0.6; }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+@media (prefers-reduced-motion: reduce) { .tab { transition: none; } }
+
+.page { width: 100%; min-width: 0; padding: 4px 16px 24px; max-width: 760px; margin: 0 auto; }
+
+/* May tinh/man hinh rong: khong gioi han 760px kieu mobile nua - phan hoi
+   2026-09-22 "tren may tinh thiet ke lai cho rong rai". */
+@media (min-width: 1024px) {
+  .page { max-width: 1180px; padding: 16px 32px 32px; }
+  .app-header { max-width: 1180px; padding: 20px 32px 8px; }
+}
+@media (min-width: 1440px) {
+  .page { max-width: 1480px; }
+  .app-header { max-width: 1480px; }
+}
+
+.page__toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.input--button { text-align: left; cursor: pointer; }
+/* Danh sach thiet bi CHI XEM trong sheet cau hinh gio (lockEntities=true,
+   ScheduleEditor.tsx) - doi thiet bi gio lam rieng o Device Detail. */
+.schedule-editor__entities-locked { color: var(--text-muted); }
+
+.search-input { flex: 1; margin: 8px 0; }
+
+.btn {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+
+.btn--primary { background: var(--accent); color: var(--accent-on); }
+.btn--ghost { background: var(--surface-2); color: var(--text); }
+.btn--danger { background: var(--danger); color: #fff; }
+.btn--block { width: 100%; margin-bottom: 8px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; overflow-x: auto; }
+
+.chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.chip--active { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+
+.field-label {
+  display: block;
+  margin: 16px 0 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.field-label--inline { margin: 0 0 4px; display: block; }
+
+.date-range-fields { display: flex; gap: 10px; margin-top: 8px; }
+.date-range-field { flex: 1; }
+.date-range-field .input { padding: 10px; font-size: 14px; }
+
+/* ---- Dieu kien phu (ScheduleEditor.tsx) - muc "chỉ chạy khi có điều kiện"
+   2026-09-23, kieu Conditions cua HA Automation. ---- */
+.condition-row {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;
+  padding: 10px; border-radius: var(--radius); background: var(--surface-2);
+}
+.condition-row__entity {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 14px; font-weight: 600; color: var(--text);
+}
+.condition-row__controls { display: flex; align-items: center; gap: 8px; }
+.condition-row__op { width: 96px; flex-shrink: 0; padding: 8px 10px; font-size: 14px; }
+.condition-row__state { flex: 1; min-width: 0; padding: 8px 10px; font-size: 14px; }
+.condition-row__now { font-size: 12px; color: var(--text-muted); }
+.condition-row__remove {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  border: none; background: var(--surface); color: var(--text-muted);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+
+/* flex + justify-content:center (khong dung grid 1fr) de 2 cot "Bat luc"/
+   "Tat luc" luon dung sat nhau o giua, khong bi keo dan het chieu rong sheet
+   (bug thuc te 2026-09-22: grid 1fr lam 2 wheel bi day ra 2 rìa, khoang
+   trong o giua qua rong, nhin "qua rong"). */
+.range-wheels { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; }
+.range-wheel { flex: 0 0 auto; text-align: center; }
+.range-wheel .time-wheel { padding-top: 4px; }
+
+.toggle { position: relative; display: inline-block; width: 46px; height: 28px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle__slider {
+  position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: 0.2s;
+}
+.toggle__slider::before {
+  content: ""; position: absolute; width: 24px; height: 24px; left: 2px; top: 2px;
+  background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle input:checked + .toggle__slider { background: var(--success); }
+.toggle input:checked + .toggle__slider::before { transform: translateX(18px); }
+
+.empty-state, .empty-hint {
+  text-align: center; color: var(--text-muted); padding: 60px 20px;
+}
+
+.empty-state__title { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+
+.settings-hint { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; }
+
+.icon-btn {
+  background: var(--surface-2);
+  border: none;
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.icon-btn--plain { background: none; width: 36px; height: 36px; }
+
+.back-button {
+  min-height: 44px;
+  padding: 0 8px 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ================= Home page ================= */
+
+.home-clock {
+  display: block; font-size: 28px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.5px; margin-top: 4px;
+}
+.home-page__header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 2px; }
+.home-page__summary { font-size: 13px; color: var(--text-muted); margin: 0; }
+.home-page__edit-btn {
+  flex-shrink: 0;
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  padding: 8px; min-width: 36px; min-height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.home-page__edit-btn--active { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--tabbar-height) + 16px + var(--safe-bottom));
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-on);
+  border: none;
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 40;
+}
+
+/* ================= Device card / grid ================= */
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (min-width: 640px) {
+  .device-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 960px) {
+  .device-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+}
+@media (min-width: 1280px) {
+  .device-grid { grid-template-columns: repeat(5, 1fr); gap: 18px; }
+}
+@media (min-width: 1600px) {
+  .device-grid { grid-template-columns: repeat(6, 1fr); gap: 20px; }
+}
+
+/* ---- Section theo Nhom (GroupedDeviceGrid.tsx) ---- */
+.device-section { margin-bottom: 20px; }
+.device-section__title {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  margin: 0 0 4px; display: flex; align-items: baseline; gap: 6px;
+}
+.device-section__count { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.device-grid--drop-target { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: var(--radius); }
+.device-section__empty {
+  grid-column: 1 / -1; border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; min-height: 60px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.device-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 16px 14px 14px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.device-card:active { transform: scale(0.98); }
+
+.device-card--dim { opacity: 0.55; }
+
+.device-card--compact { min-height: 110px; padding: 12px; }
+
+.device-card__top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.device-card__favorite {
+  background: none; border: none; color: var(--text-muted); padding: 10px;
+  margin: -10px 0 0 -10px; min-width: 44px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.device-card__favorite--active { color: var(--star); }
+
+.device-card__top-actions { display: flex; align-items: center; gap: 2px; margin: -6px -6px 0 0; }
+
+.device-card__group-btn {
+  background: none; border: none; color: var(--text-muted); padding: 8px;
+  min-width: 36px; min-height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.device-card__delete-btn {
+  background: none; border: none; color: var(--danger); padding: 8px;
+  min-width: 36px; min-height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.device-card__delete-btn:active { background: color-mix(in srgb, var(--danger) 15%, transparent); }
+
+/* Tay cam keo-tha rieng (SortableJS, khong keo ca card nua) - phan hoi
+   2026-09-23 "kéo thả quá khó khăn ... trên điện thoại không thể nắm kéo
+   được". `touch-action:none` BAT BUOC (giong addon PZEM dang dung on dinh)
+   - thieu no thi trinh duyet mobile se danh cu chi cham giu tai day cho
+   cuon trang truoc khi SortableJS kip nhan duoc, lam "keo khong an". */
+.drag-handle {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-muted); cursor: grab; touch-action: none; user-select: none;
+  padding: 8px; min-width: 36px; min-height: 36px; border-radius: 50%;
+}
+.drag-handle:active { background: var(--surface-2); cursor: grabbing; }
+
+/* Class SortableJS tu gan trong luc keo (khong phai code tu viet) -
+   .sortable-ghost la "bong" giu cho vi tri cu, .sortable-chosen la card GOC
+   dang duoc cam (van nam trong grid that), .sortable-fallback la BAN SAO NOI
+   theo ngon tay (forceFallback:true - xem ghi chu trong DeviceGrid.tsx/
+   GroupedDeviceGrid.tsx, phan hoi 2026-09-23 "kéo trên điện thoại giật
+   giật"). QUAN TRONG: phai tat `transition` cua .device-card (dung cho hieu
+   ung bam :active { scale(0.98) }) tren ca 2 class nay - de nguyen se danh
+   nhau voi transform ma SortableJS tu dat khi dinh vi/animate, gay giat. */
+.sortable-ghost { opacity: 0.35; }
+/* The floating clone also inherits sortable-chosen. Never override its
+   inline transform: SortableJS uses it to follow the pointer. */
+.sortable-chosen.device-card { transition: none !important; }
+.sortable-chosen.device-card:active { transform: none; }
+/* Vien noi bat cho ban sao dang keo - phan hoi "ô được kéo viền nó lên
+   nhìn cho dễ xem" - de biet ro dang cam thiet bi nao giua chung khi keo. */
+.sortable-fallback {
+  opacity: 0.95 !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28) !important;
+  outline: 3px solid var(--accent, #3b82f6);
+  outline-offset: 2px;
+  transition: none !important;
+  cursor: grabbing;
+}
+/* Keo-tha Lich trong Device Detail (config): bo vien xanh dam, chi giu bong
+   do - phan hoi 2026-09-24 "drop drag trong config bỏ cái viền xanh đậm đi". */
+.schedule-row.sortable-fallback { outline: none; }
+.schedule-row.sortable-chosen { outline: none; }
+
+/* Bo chon icon trong Cai dat -> Thiet bi -> Sua (deviceVisuals.ICON_CHOICES). */
+.icon-choices {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 8px; margin-top: 4px;
+}
+.icon-choice {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 44px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted);
+}
+.icon-choice--active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  border-color: var(--accent);
+}
+.icon-choice:first-child { grid-column: span 3; }
+.icon-choice__label { font-size: 13px; font-weight: 600; }
+/* O dan icon tuy y "mdi:..." (v0.5.26) - xem truoc icon ben trai. */
+.icon-custom { display: flex; align-items: center; gap: 8px; }
+.icon-custom .input { flex: 1; min-width: 0; font-family: ui-monospace, monospace; }
+.icon-custom__preview {
+  flex: none; width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+.icon-custom__q { font-weight: 700; color: var(--text-muted); }
+.icon-custom__hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+.icon-custom__hint--error { color: var(--danger); }
+.icon-custom__hint a { color: var(--accent, #0a84ff); }
+
+/* Doi entity trong Cai dat -> Thiet bi -> Sua (v0.5.27). */
+.entity-swap { display: flex; align-items: center; gap: 8px; }
+.entity-swap__ids { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.entity-swap__old { text-decoration: line-through; padding-bottom: 2px; }
+.entity-swap__new { padding-top: 0; font-size: 14px; font-weight: 600; color: var(--success); }
+.entity-row__missing { color: var(--warning); font-weight: 600; }
+
+.device-card__icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.device-card__icon.device-card__icon--on,
+.device-detail__icon.device-detail__icon--on {
+  background: color-mix(in srgb, var(--star) 22%, var(--surface));
+  color: var(--star);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--star) 38%, transparent);
+}
+
+.device-card--compact .device-card__icon { width: 34px; height: 34px; margin-bottom: 6px; }
+
+.device-card__title {
+  font-size: 15px; font-weight: 600; line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.device-card__area, .device-card__state {
+  font-size: 12px; color: var(--text-muted); margin-top: 2px;
+}
+.device-card__state--on { color: var(--success); font-weight: 600; }
+
+.device-card__next {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.device-card__next--off { color: var(--text-muted); font-size: 13px; margin-top: auto; padding-top: 10px; }
+
+.device-card__time { font-size: 20px; font-weight: 700; line-height: 1; }
+
+.device-card__action { font-size: 12px; color: var(--text-muted); margin: 2px 0; }
+
+.on-time {
+  width: 100%;
+  margin-top: 9px;
+}
+
+.on-time__labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.on-time__labels span:first-child { color: var(--star); font-weight: 700; }
+
+.on-time__track {
+  width: 100%;
+  height: 5px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+
+.on-time__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--star);
+  transition: width 1s linear;
+}
+
+/* ================= Device detail ================= */
+
+.device-detail__topbar {
+  display: flex;
+  min-height: 48px;
+  padding: 2px 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+}
+
+.device-detail__header { text-align: center; padding: 6px 0 18px; }
+
+.device-detail__icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
+
+.device-detail__name { font-size: 20px; font-weight: 700; }
+.device-detail__area { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.device-detail__state { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.device-detail__state--on { color: var(--success); font-weight: 600; }
+.device-detail__change-devices {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+.device-detail__hero {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.device-detail__hero--empty { color: var(--text-muted); font-size: 14px; padding: 24px; }
+
+.device-detail__hero-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; }
+.device-detail__hero-time { font-size: 40px; font-weight: 700; line-height: 1.15; }
+.device-detail__hero-action { font-size: 14px; color: var(--text-muted); margin-bottom: 4px; }
+
+.device-detail__section-title {
+  font-size: 13px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; margin: 4px 0 6px;
+}
+
+.device-detail__manual { margin-bottom: 10px; }
+
+.schedule-row-list {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.schedule-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-row:last-child { border-bottom: none; }
+/* Dong Lich dang chay (trong khung Bat -> Tat) - sang vang, het khung tu bo. */
+.schedule-row--running {
+  background: color-mix(in srgb, var(--star) 18%, transparent);
+  box-shadow: inset 3px 0 0 var(--star);
+  transition: background 300ms ease;
+}
+.schedule-row--running .schedule-row__time { color: var(--star); }
+
+.schedule-row__main {
+  flex: 1;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0;
+  background: none; border: none;
+  color: var(--text);
+  font-size: 16px;
+  text-align: left;
+}
+
+.schedule-row__time { font-weight: 700; min-width: 74px; }
+.schedule-row__action { flex: 1; color: var(--text-muted); font-size: 14px; }
+.schedule-row__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.schedule-row__dot--on { background: var(--success); }
+
+.toggle--small { width: 38px; height: 22px; }
+.toggle--small .toggle__slider::before { width: 18px; height: 18px; }
+.toggle--small input:checked + .toggle__slider::before { transform: translateX(16px); }
+
+.add-time-btn { margin-top: 4px; }
+
+@media (min-width: 900px) {
+  .device-detail {
+    max-width: 1040px;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-areas:
+      "topbar topbar"
+      "header hero"
+      "header manual"
+      "header schedule-title"
+      "header schedule-list"
+      "header add-time";
+    column-gap: 36px;
+    align-items: start;
+  }
+  .device-detail__topbar { grid-area: topbar; position: static; }
+  .device-detail__header {
+    grid-area: header;
+    position: sticky;
+    top: 24px;
+    padding: 28px 20px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+  }
+  .device-detail__hero { grid-area: hero; margin-top: 0; }
+  .device-detail__manual { grid-area: manual; }
+  .device-detail__schedule-title { grid-area: schedule-title; }
+  .schedule-row-list { grid-area: schedule-list; width: 100%; }
+  .add-time-btn { grid-area: add-time; }
+}
+
+/* ================= Schedule detail sheet ================= */
+
+.schedule-detail__summary { text-align: center; padding: 4px 0 16px; }
+.schedule-detail__name { font-size: 17px; font-weight: 700; }
+.schedule-detail__action { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+.schedule-detail__days { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.schedule-detail__range { font-size: 12px; color: var(--accent); margin-top: 4px; }
+
+/* ================= Entity picker / list ================= */
+
+.entity-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+
+.entity-group { margin-bottom: 6px; }
+
+.entity-group__title {
+  font-size: 12px; color: var(--text-muted); font-weight: 700;
+  text-transform: uppercase; margin: 14px 0 4px;
+  display: flex; align-items: center; gap: 4px;
+}
+
+.entity-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 10px; border-bottom: 1px solid var(--border);
+}
+
+.entity-row--card { border-radius: var(--radius); border-bottom: none; background: var(--surface); margin-bottom: 6px; padding: 10px 12px; }
+
+.entity-row--editable { justify-content: flex-start; }
+
+.entity-row--disabled { opacity: 0.4; }
+
+.entity-row__icon {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
+
+.entity-row__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.entity-row__name { font-size: 15px; font-weight: 500; }
+
+.entity-row__domain, .entity-row__state, .entity-row__id { font-size: 12px; color: var(--text-muted); }
+
+/* Dong thiet bi trong Cai dat -> Thiet bi: chu nho hon 2px, hang nut nho
+   gon ben duoi ten, can trai (DevicesSettings.tsx). */
+.device-row { align-items: flex-start; }
+.device-row .entity-row__icon { margin-top: 2px; }
+.device-row .entity-row__name { font-size: 13px; overflow-wrap: anywhere; }
+.device-row .entity-row__id { font-size: 10px; overflow-wrap: anywhere; }
+.device-row__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.device-row__btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 28px; padding: 0 10px; border: none; border-radius: 999px;
+  background: var(--surface-2); color: var(--text);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.device-row__btn--icon { width: 28px; padding: 0; }
+
+.readonly-value { padding: 10px 0; font-size: 15px; }
+.readonly-value--muted { color: var(--text-muted); font-size: 13px; }
+
+/* ---- Bottom sheet ---- */
+
+.sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-top: env(safe-area-inset-top, 0px);
+  z-index: 100;
+}
+
+.sheet {
+  background: var(--surface);
+  width: 100%; max-width: 520px;
+  border-radius: 20px 20px 0 0;
+  max-height: calc(100vh - env(safe-area-inset-top, 0px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  display: flex; flex-direction: column;
+  padding: 10px max(14px, env(safe-area-inset-right, 0px)) calc(14px + var(--safe-bottom)) max(14px, env(safe-area-inset-left, 0px));
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .sheet-backdrop { align-items: center; }
+  .sheet { width: min(680px, calc(100% - 48px)); max-width: 680px; border-radius: var(--radius-lg); max-height: min(820px, calc(100vh - 48px)); padding: 12px 22px 20px; }
+}
+
+.sheet__handle {
+  width: 40px; height: 5px; background: var(--border); border-radius: 3px;
+  margin: 4px auto 10px;
+}
+
+.sheet__title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+
+/* overscroll-behavior-y: xem ghi chu chi tiet o .app-main - sheet (vd
+   ScheduleEditor chua wheel picker chon gio) la 1 vung cuon RIENG, can chan
+   pull-to-refresh o day nua vi day la vung nguoi dung dang thao tac luc gap
+   phan hoi "cham nham wheel keo xuong reload trang". */
+.sheet__body { overflow-y: auto; flex: 1; overscroll-behavior-y: none; }
+
+/* Scrollbar mong, xam, khong vien trang mac dinh cua browser (phan hoi
+   thuc te 2026-09-22: "thanh slide scroll xau... mau xam khong vien
+   trang") - ap dung cho moi vung cuon trong sheet/list, khong can them
+   thu vien JS rieng, CSS thuan la du. */
+.sheet__body, .entity-list, .app-main {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.sheet__body::-webkit-scrollbar, .entity-list::-webkit-scrollbar, .app-main::-webkit-scrollbar {
+  width: 6px;
+}
+.sheet__body::-webkit-scrollbar-track, .entity-list::-webkit-scrollbar-track, .app-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sheet__body::-webkit-scrollbar-thumb, .entity-list::-webkit-scrollbar-thumb, .app-main::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 999px;
+  border: none;
+}
+
+.sheet__footer { padding-top: 10px; }
+
+.sheet__actions { display: flex; gap: 10px; }
+.sheet__actions .btn { flex: 1; }
+
+/* ---- Day selector ---- */
+
+.day-selector__presets { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+
+.day-selector__days { display: flex; gap: 6px; justify-content: space-between; }
+
+.day-pill {
+  flex: 1; padding: 8px 0; text-align: center;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 13px;
+}
+
+.day-pill--active { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+
+/* ---- Time wheel picker (wrapper quanh @ncdai/react-wheel-picker) ---- */
+
+.time-wheel {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 6px 4px 12px;
+  /* KHONG phai "visibleCount x optionItemHeight" - chieu cao clip THUC cua
+     moi cot [data-rwp] do thu vien tu tinh bang cong thuc hinh tru 3D
+     (xem ghi chu trong TimeWheelPicker.tsx), o day chi la khung ngoai de
+     can giua + chua vien mo dan (mask-image) cua thu vien; giam tu 200px
+     xuong 130px de gon hon nhung van du khoang cho so mo phia tren/duoi.
+     2026-09-23: tang len 165px (ty le voi optionItemHeight 30->38px, xem
+     WHEEL_ITEM_HEIGHT trong TimeWheelPicker.tsx) - phan hoi "diem cham
+     scroll kha be". */
+  height: 95px;
+}
+
+@media (max-width: 359px) {
+  .page { padding-left: 10px; padding-right: 10px; }
+  .device-grid { gap: 8px; }
+  .device-card { padding: 12px 10px; }
+  .date-range-fields { flex-direction: column; gap: 4px; }
+  .sheet__actions { gap: 6px; }
+  .sheet__actions .btn { padding-left: 10px; padding-right: 10px; }
+}
+
+/* Moi cot gio/phut la 1 [data-rwp] rieng - dat chieu rong co dinh de 2 cot
+   deu nhau, khong bi lech khi so 1-2 chu so (gio) vs luon 2 chu so (phut).
+   2026-09-23: tang 40->52px (phan hoi "diem cham scroll kha be", vung cham
+   moi cot rong hon, gan muc toi thieu 44px khuyen nghi cho ngon tay hon). */
+.time-wheel > [data-rwp] { width: 52px; max-width: 52px; }
+
+/* line-height PHAI khop WHEEL_ITEM_HEIGHT (38px) trong TimeWheelPicker.tsx -
+   font-size tang tu 16/22px len 19/26px cho so to hon, de nhin/de cham hon
+   (phan hoi 2026-09-23). */
+.time-wheel__item { font-size: 19px; color: var(--text-muted); line-height: 38px; }
+.time-wheel__item--active { font-size: 26px; font-weight: 700; color: var(--text); line-height: 38px; }
+.time-wheel__sep { font-size: 22px; font-weight: 700; color: var(--text-muted); align-self: center; }
+
+/* ---- Offset stepper (Binh minh/Hoang hon +/- phut, thay TimeWheelPicker
+   khi trigger_type != "time") ---- */
+.offset-stepper {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  padding: 16px 12px;
+}
+.offset-stepper__btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 22px; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.offset-stepper__value { min-width: 120px; text-align: center; }
+.offset-stepper__label { font-size: 13px; color: var(--text-muted); }
+.offset-stepper__minutes { font-size: 20px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.offset-stepper__preview { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* ---- Light/Cover/Fan action editors (light_set/cover_set/fan_set) ---- */
+.climate-action { margin-top: 4px; }
+
+.light-range {
+  width: 100%; height: 6px; border-radius: 999px; appearance: none;
+  background: var(--surface-2); outline: none; margin: 10px 0 4px;
+}
+.light-range::-webkit-slider-thumb {
+  appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: 3px solid var(--surface);
+}
+.light-range::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: 3px solid var(--surface);
+}
+.light-range--temp {
+  background: linear-gradient(to right, #ff9a2e, #fff3d6, #cfe8ff, #6fb8ff);
+}
+.light-range__labels {
+  display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;
+}
+.light-range__current { font-weight: 700; color: var(--text); }
+
+.light-color-swatch {
+  width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border);
+  cursor: pointer; padding: 0;
+}
+.light-color-picker {
+  width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border);
+  padding: 0; cursor: pointer; background: none;
+}
+
+/* ---- "Bat cuong che" thu cong (ForceOnControl.tsx) ---- */
+.force-on { margin-bottom: 8px; }
+.force-on--active {
+  background: var(--surface-2); border-radius: 12px; padding: 14px; text-align: center;
+}
+.force-on__status { font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.force-on__countdown { color: var(--text-muted); margin-bottom: 10px; }
+
+/* Dai highlight quanh gia tri dang chon - khung nen + vien tren/duoi kieu
+   iOS (giong "── 07 ──" trong mockup goc), thay vi khong co dau hieu gi
+   nhu ban truoc ("beta unstyled tu github"). */
+.time-wheel__highlight {
+  background: var(--surface-2);
+  border-radius: 10px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Thu vien mac dinh dat -webkit-font-smoothing:subpixel-antialiased tren
+   chu so trong wheel (xem dist/index.css cua @ncdai/react-wheel-picker) -
+   ket hop voi mask-image/transform 3D cua no gay vien mau loang (chromatic
+   fringing) tren Windows ClearType, da gap thuc te 2026-09-22. Ep ve
+   grayscale antialiasing de tranh loi render nay. */
+.time-wheel [data-rwp-option],
+.time-wheel [data-rwp-highlight-item] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- History ---- */
+
+.history-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.history-row {
+  display: flex; gap: 12px; background: var(--surface); border-radius: var(--radius);
+  padding: 12px;
+}
+
+.history-row__status { font-size: 16px; width: 20px; text-align: center; }
+.history-row__status--success { color: var(--success); }
+.history-row__status--error { color: var(--danger); }
+
+.history-row__name { font-weight: 600; font-size: 14px; }
+.history-row__time { font-size: 12px; color: var(--text-muted); }
+.history-row__message { font-size: 12px; color: var(--danger); margin-top: 2px; }
+
+.form-error {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 8px 0;
+  text-align: center;
+}
+
+.badge {
+  font-size: 10px; background: var(--surface-2); padding: 2px 6px; border-radius: 6px;
+  color: var(--text-muted); margin-left: 6px;
+}
+
+/* ---- Settings (list style, iOS) ---- */
+
+.settings-section { margin-bottom: 22px; }
+
+.settings-section__title {
+  font-size: 13px; color: var(--text-muted); font-weight: 700; margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.settings-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px; background: var(--surface); border-radius: var(--radius);
+  margin-bottom: 6px; font-size: 14px;
+}
+
+.settings-list-row {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  color: var(--text);
+  text-align: left;
+}
+
+.settings-list-row__icon {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.settings-list-row__text { flex: 1; display: flex; flex-direction: column; }
+.settings-list-row__title { font-size: 15px; font-weight: 500; }
+.settings-list-row__hint { font-size: 12px; color: var(--text-muted); }
+.settings-list-row__chevron { color: var(--text-muted); flex-shrink: 0; }
+
+.subpage-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0 10px;
+}
+
+.subpage-header__title { font-size: 17px; font-weight: 700; }
+.subpage-header__spacer { width: 36px; }
+
+.status-text { font-size: 13px; }
+.status-text--on { color: var(--success); }
+.status-text--off { color: var(--warning); }
+
+.about-page__body { text-align: center; padding: 30px 10px; }
+.about-page__name { font-size: 20px; font-weight: 700; }
+.about-page__version { font-size: 13px; color: var(--text-muted); margin: 4px 0 16px; }
+.about-page__desc { font-size: 13px; color: var(--text-muted); max-width: 320px; margin: 0 auto 10px; }
+.about-page__donate-list { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 4px auto 22px; }
+.about-page__donate {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 260px; max-width: 100%; padding: 14px 24px;
+  border: 2px solid #1c1c1e; border-radius: 16px; background: #ffdd00; color: #1c1c1e;
+  font-size: 19px; font-weight: 800; letter-spacing: 0.2px; text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.about-page__donate:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0, 0, 0, 0.28); }
+.about-page__donate:active { transform: scale(0.97); }
+.about-page__donate-icon { width: 26px; height: 26px; fill: currentColor; flex-shrink: 0; }
+.about-page__donate--kofi { background: #ff5e5b; border-color: #ff5e5b; color: #ffffff; }
+.about-page__donate--paypal { background: #0070ba; border-color: #0070ba; color: #ffffff; }
+.about-page__note { font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ---- Bang thong bao dau trang Nha (HomeBanners.tsx, v0.5.32) ---- */
+.home-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; margin-bottom: 10px; border-radius: var(--radius);
+  font-size: 13px; line-height: 1.4;
+}
+.home-banner__text { flex: 1; min-width: 0; }
+.home-banner__line { color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+.home-banner__btn {
+  flex-shrink: 0; border: none; border-radius: 999px; padding: 6px 12px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  background: var(--surface); color: var(--text);
+}
+.home-banner--pause { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.home-banner--presence { background: color-mix(in srgb, var(--success) 16%, var(--surface)); }
+.home-banner--alert { background: color-mix(in srgb, var(--star) 18%, var(--surface)); }
+
+/* ---- Gia lap co nguoi (PresenceSettings.tsx) ---- */
+.presence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.presence-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.presence-field__label { font-size: 12px; color: var(--text-muted); }
