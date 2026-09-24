@@ -80,7 +80,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p /tmp/release && cp -a . /tmp/release/ && rm -rf /tmp/release/.git
           git fetch origin main
-          git checkout -B main origin/main
+          # -f: set_channel.py modified config.yaml on the test tree (full copy is already in /tmp/release)
+          git checkout -f -B main origin/main
           git rm -rq --ignore-unmatch .
           cp -a /tmp/release/. .
           git add -A
