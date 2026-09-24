@@ -120,7 +120,7 @@ export function Home({
   return (
     <div className="page home-page">
       <Clock timeFormat={settings.time_format} timezone={settings.timezone} />
-      <HomeBanners settings={settings} schedules={schedules} entities={entities} presence={presence} reload={reload} />
+      <HomeBanners settings={settings} entities={entities} presence={presence} reload={reload} />
       <div className="home-page__header-row">
         <div className="home-page__summary">
           {groups.length} {tr("thiết bị", "devices")} · {schedules.length} {tr("lịch", "schedules")}{activeCount ? ` · ${activeCount} ${tr("đang bật", "enabled")}` : ""}

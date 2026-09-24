@@ -181,10 +181,11 @@ def reorder_schedules(ordered_ids: list[str]) -> None:
             c.execute("UPDATE schedules SET sort_order=?, updated_at=? WHERE id=?", (idx * 10, now_iso(), sid))
 
 
-def mark_executed(schedule_id: str, scheduled_for: str, status: str) -> None:
+def mark_executed(schedule_id: str, scheduled_for: str, status: str, consume_skip_once: bool = True) -> None:
     with tx() as c:
         c.execute(
-            "UPDATE schedules SET last_run=?, last_scheduled_for=?, last_status=?, skip_once=0 WHERE id=?",
+            "UPDATE schedules SET last_run=?, last_scheduled_for=?, last_status=?"
+            + (", skip_once=0" if consume_skip_once else "") + " WHERE id=?",
             (now_iso(), scheduled_for, status, schedule_id),
         )
 
