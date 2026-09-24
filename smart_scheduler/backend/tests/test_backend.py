@@ -125,6 +125,32 @@ def test_process_schedule_runs_when_not_paused(fake_ha):
     assert fake_ha.calls and fake_ha.calls[0][2] == ["switch.a"]
 
 
+# ---- lo gio ----
+
+def _ten_minutes_ago():
+    now = datetime.now(TZ)
+    if now.hour == 0 and now.minute < 15:
+        pytest.skip("khe gio -10 phut roi sang ngay hom qua")
+    return (now - timedelta(minutes=10)).strftime("%H:%M:%S")
+
+
+def test_slot_before_schedule_created_is_not_missed(fake_ha):
+    # Tao khung 23:30->02:30 luc 22:12: moc 02:30 hom nay qua truoc khi lich ton tai.
+    s = make_schedule(time=_ten_minutes_ago())
+    run(scheduler_engine._process_schedule(s, "skip", None, None))
+    assert fake_ha.calls == []
+    assert crud.get_schedule(s["id"])["last_status"] == "skipped_inactive"
+    assert crud.list_history(50) == []
+
+
+def test_slot_after_schedule_saved_is_missed(fake_ha):
+    s = make_schedule(time=_ten_minutes_ago())
+    s["updated_at"] = (datetime.now(TZ) - timedelta(days=1)).isoformat()
+    run(scheduler_engine._process_schedule(s, "skip", None, None))
+    assert fake_ha.calls == []
+    assert [h["status"] for h in crud.list_history(50)] == ["skipped_missed"]
+
+
 # ---- sao luu ----
 
 def test_backup_roundtrip_keeps_groups_and_category():

@@ -27,13 +27,26 @@ https://github.com/thaihoang987/Smart-Schedule
 
 then install **Smart Scheduler**, start it and open it from the sidebar.
 
+Updates are prebuilt images (amd64 / aarch64), so updating only downloads — nothing is compiled on
+your Home Assistant machine.
+
+### Test channel (optional)
+
+Pre-release builds for testing, installed **side by side** with the stable add-on (separate name
+"Smart Scheduler (Test)", separate data). Add this repository URL:
+
+```
+https://github.com/thaihoang987/Smart-Schedule#test
+```
+
+> Run only one of them for the same devices at a time — two schedulers on one device will fight.
+
 ## Add-ons in this repository
 
 ### [Smart Scheduler](smart_scheduler/README.md)
 
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-green.svg)
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-green.svg)
-![Version](https://img.shields.io/badge/version-0.5.42-blue.svg)
 
 On → off time ranges, sunrise/sunset triggers, conditions, groups, forced-on timers, presence
 simulation, missed-run catch-up, state verification, history and backup. English and Vietnamese UI.

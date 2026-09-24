@@ -219,6 +219,17 @@ def _execution_action(schedule: dict) -> dict:
     return action
 
 
+def _armed_at(schedule: dict) -> datetime:
+    """Moc lich bat dau co hieu luc voi cau hinh hien tai = updated_at (moi
+    lan tao/sua/bat/tat card deu cap nhat cot nay, chuoi UTC isoformat)."""
+    raw = schedule.get("updated_at") or schedule.get("created_at") or ""
+    try:
+        dt = datetime.fromisoformat(raw)
+    except ValueError:
+        return datetime.min.replace(tzinfo=ZoneInfo("UTC"))
+    return dt if dt.tzinfo else dt.replace(tzinfo=ZoneInfo("UTC"))
+
+
 async def _process_schedule(schedule: dict, missed_policy: str, expires_at: datetime | None = None,
                             pause_end: datetime | None = None) -> None:
     tz = _tz(schedule.get("timezone") or DEFAULT_TIMEZONE)
@@ -236,6 +247,15 @@ async def _process_schedule(schedule: dict, missed_policy: str, expires_at: date
     slot = _slot_key(scheduled_dt)
     if schedule.get("last_scheduled_for") == slot:
         return  # da xu ly khe gio nay roi (idempotent)
+
+    # Khe gio da qua TRUOC khi lich duoc tao/sua/bat (updated_at) thi khong
+    # phai "lo gio" - vd tao khung 23:30->02:30 luc 22:12 thi moc Tat 02:30
+    # hom nay da qua tu truoc, luc do lich chua ton tai (phan hoi 2026-09-24).
+    # Danh dau im lang: khong ghi history, khong bao tren Home, khong tieu
+    # skip_once. Van giu GRACE_SECONDS de sua lich sat gio van chay kip.
+    if (now - scheduled_dt).total_seconds() > GRACE_SECONDS and scheduled_dt < _armed_at(schedule):
+        crud.mark_executed(schedule["id"], slot, "skipped_inactive", consume_skip_once=False)
+        return
 
     # Che do tam dung/di vang: danh dau da xu ly khe gio nay (khong chay bu
     # khi het tam dung, ke ca voi missed_policy="run_once").
