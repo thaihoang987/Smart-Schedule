@@ -1,7 +1,6 @@
 # Smart Scheduler — Home Assistant (Hass.io) Add-on
 
 ![Home Assistant Add-on](https://img.shields.io/badge/Home%20Assistant-Add--on-41BDF5?style=for-the-badge&logo=homeassistant&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.5.43-blue?style=for-the-badge)
 
 <a href="https://buymeacoffee.com/leon_bell" target="_blank"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20beer&emoji=%F0%9F%8D%BA&slug=leon_bell&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a beer" height="50"></a>
 <a href="https://ko-fi.com/leonbell" target="_blank"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="50"></a>
@@ -48,7 +47,6 @@ https://github.com/thaihoang987/Smart-Schedule#test
 
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-green.svg)
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-green.svg)
-![Version](https://img.shields.io/badge/version-0.5.43-blue.svg)
 
 On → off time ranges, sunrise/sunset triggers, conditions, groups, forced-on timers, presence
 simulation, missed-run catch-up, state verification, history and backup. English and Vietnamese UI.
