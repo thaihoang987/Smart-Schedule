@@ -1,0 +1,84 @@
+# Manual release: Actions -> Release -> Run workflow.
+# Takes exactly what is on the `test` branch (what you tested), builds the STABLE image,
+# and only after the image is on GHCR commits it to `main` and creates the GitHub release.
+# Refuses to run if that version was already released.
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test
+          fetch-depth: 0
+
+      - name: Stable version
+        id: v
+        run: |
+          version=$(python3 .github/scripts/set_channel.py version)
+          if git ls-remote --exit-code --tags origin "refs/tags/v${version}" >/dev/null; then
+            echo "::error::v${version} is already released - bump the version on dev first"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Switch files to the stable channel
+        run: python3 .github/scripts/set_channel.py apply stable
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push stable image
+        uses: docker/build-push-action@v6
+        with:
+          context: smart_scheduler
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          tags: ghcr.io/thaihoang987/smart-scheduler:${{ steps.v.outputs.version }}
+          build-args: |
+            BUILD_VERSION=${{ steps.v.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Smart Scheduler Home Assistant add-on
+
+      - name: Commit to main, tag and create the release (image is ready)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/release && cp -a . /tmp/release/ && rm -rf /tmp/release/.git
+          git fetch origin main
+          git checkout -B main origin/main
+          git rm -rq --ignore-unmatch .
+          cp -a /tmp/release/. .
+          git add -A
+          git commit -m "Release ${VERSION}"
+          git tag "v${VERSION}"
+          git push origin main "v${VERSION}"
+          python3 - <<'PY' > /tmp/notes.md
+          import os, re
+          text = open("smart_scheduler/CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^## {re.escape(os.environ['VERSION'])}\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+          print(m.group(1).strip() if m else "See CHANGELOG.md")
+          PY
+          gh release create "v${VERSION}" --title "Smart Scheduler ${VERSION}" --notes-file /tmp/notes.md
