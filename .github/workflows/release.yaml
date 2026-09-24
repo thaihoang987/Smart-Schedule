@@ -1,10 +1,15 @@
-# Manual release: Actions -> Release -> Run workflow.
-# Takes exactly what is on the `test` branch (what you tested), builds the STABLE image,
-# and only after the image is on GHCR commits it to `main` and creates the GitHub release.
-# Refuses to run if that version was already released.
+# Automatic release: runs after every successful "Test channel" run (push to `dev`).
+# Can also be started by hand: Actions -> Release -> Run workflow.
+# Takes exactly what is on the `test` branch, builds the STABLE image, and only after the
+# image is on GHCR commits it to `main` and creates the GitHub release.
+# If that version was already released (dev push without a version bump) it does nothing.
 name: Release
 
 on:
+  workflow_run:
+    workflows: ["Test channel"]
+    types: [completed]
+    branches: [dev]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +22,7 @@ concurrency:
 
 jobs:
   release:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,24 +34,29 @@ jobs:
         id: v
         run: |
           version=$(python3 .github/scripts/set_channel.py version)
-          if git ls-remote --exit-code --tags origin "refs/tags/v${version}" >/dev/null; then
-            echo "::error::v${version} is already released - bump the version on dev first"
-            exit 1
-          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v${version}" >/dev/null; then
+            echo "::notice::v${version} is already released - nothing to do (bump the version on dev to release)"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Switch files to the stable channel
+        if: steps.v.outputs.skip != 'true'
         run: python3 .github/scripts/set_channel.py apply stable
 
       - uses: docker/setup-qemu-action@v3
+        if: steps.v.outputs.skip != 'true'
       - uses: docker/setup-buildx-action@v3
+        if: steps.v.outputs.skip != 'true'
       - uses: docker/login-action@v3
+        if: steps.v.outputs.skip != 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push stable image
+        if: steps.v.outputs.skip != 'true'
         uses: docker/build-push-action@v6
         with:
           context: smart_scheduler
@@ -60,6 +71,7 @@ jobs:
             org.opencontainers.image.description=Smart Scheduler Home Assistant add-on
 
       - name: Commit to main, tag and create the release (image is ready)
+        if: steps.v.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.v.outputs.version }}
